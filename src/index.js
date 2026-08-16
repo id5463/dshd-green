@@ -237,6 +237,7 @@ function usage() {
     '  dshd-green status            主 DSH 心跳 + 会话概览\n' +
     '  dshd-green doctor            配置/端口/进程/日志 健康检查\n' +
     '  dshd-green log [--tail 30]   查看日志尾部 (可 --file <path>)\n' +
+    '  dshd-green prompt            打印救援实例默认系统提示词 (Phase 2 启用)\n' +
     '\n' +
     '选项 / options:\n' +
     '  --port <n>    DSH 端口 (默认 3080, 或环境变量 DSH_PORT)\n' +
@@ -248,6 +249,12 @@ function usage() {
   return 0
 }
 
+function cmdPrompt() {
+  const { RESCUE_SYSTEM_PROMPT } = require('./prompt.js')
+  console.log(RESCUE_SYSTEM_PROMPT)
+  return 0
+}
+
 async function run(argv) {
   const opts = parseArgs(argv)
   try {
@@ -256,6 +263,7 @@ async function run(argv) {
       case 'status': return await cmdStatus(opts)
       case 'doctor': return await cmdDoctor(opts)
       case 'log': return cmdLog(opts)
+      case 'prompt': return cmdPrompt()
       case 'help':
       case null:
       default: return usage()
