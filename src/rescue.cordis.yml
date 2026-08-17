@@ -1,0 +1,120 @@
+# dshd Green 救援组合 —— 极简模式 (从 DSH 源码 examples/jsonrpc-agent/minimal.cordis.yml 拆出)
+#
+# 完全独立的救援 agent 运行时: 与主 DSH 的进程/源码/数据零共享。
+# 模型可见工具 = 极简工具对: shell (POSIX 持久 bash / win32 pwsh) + str_replace_editor。
+# persona 由环境变量 DSH_SYSTEM_PROMPT 注入 (即 RESCUE_SYSTEM_PROMPT + 预检 + 用户问题)。
+# 一次性任务由 headless 驱动 (命令行位置参数), 跑完打印最终报告并退出。
+#
+# 用法 (由 dshd-green rescue 自动编排):
+#   <node> <dsh> --profile green "<任务文本>"    (DSH_HOME=<隔离实例 home>)
+
+- insert:
+    # 默认模型路由 (headless runner 需要)
+    - id: agent-default-model
+      name: '@deepseek-ai/dsh-agent-default-model'
+      config:
+        provider: deepseek-official
+        model: !!js process.env.DSH_MODEL ?? 'deepseek-v4-flash'
+
+    # LLM 适配器: key/endpoint/模型全部来自环境变量 (Green 从主 DSH 配置只读读取后注入)
+    - id: llm-deepseek
+      name: '@deepseek-ai/dsh-llm-deepseek'
+      config:
+        apiKeyEnv: DEEPSEEK_API_KEY
+        streamIdleTimeoutMs: 172800000
+        models:
+          - id: !!js process.env.DSH_MODEL ?? 'deepseek-v4-flash'
+            contextWindow: !!js Number(process.env.DSH_CONTEXT_WINDOW ?? 1000000)
+
+    - id: sandbox
+      name: '@deepseek-ai/dsh-sandbox-local'
+
+    - id: sandbox-policy
+      name: '@deepseek-ai/dsh-sandbox-policy'
+      config:
+        mode: danger-full-access
+        workspaceRoot: !!js process.env.DSH_CWD ?? process.cwd()
+
+    - id: subprocess
+      name: '@deepseek-ai/dsh-subprocess-local'
+
+    # shell 工具栈: POSIX 用持久 bash (PTY), win32 用 pwsh —— 平台无关
+    - id: pty
+      name: '@deepseek-ai/dsh-terminal'
+      disabled: !!js process.platform === 'win32'
+
+    - id: terminal-bash
+      name: '@deepseek-ai/dsh-terminal-bash'
+      disabled: !!js process.platform === 'win32'
+      config:
+        timeoutMs: 300000
+
+    - id: persistent-bash
+      name: '@deepseek-ai/dsh-tool-bash-persistent'
+      disabled: !!js process.platform === 'win32'
+      config:
+        timeoutMs: 300000
+        description: |-
+          Run commands in a bash shell
+          * When invoking this tool, the contents of the "command" parameter does NOT need to be XML-escaped.
+          * You don't have access to the internet via this tool.
+          * You do have access to a mirror of common linux and python packages via apt and pip.
+          * State is persistent across command calls and discussions with the user.
+          * To inspect a particular line range of a file, e.g. lines 10-25, try 'sed -n 10,25p /path/to/the/file'.
+          * Please avoid commands that may produce a very large amount of output.
+          * Please run long lived commands in the background, e.g. 'sleep 10 &' or start a server in the background.
+
+    - id: pwsh-local
+      name: '@deepseek-ai/dsh-pwsh-local'
+      disabled: !!js process.platform !== 'win32'
+
+    - id: shell-env
+      name: '@deepseek-ai/dsh-shell-env'
+      disabled: !!js process.platform !== 'win32'
+
+    - id: tool-pwsh
+      name: '@deepseek-ai/dsh-tool-pwsh'
+      disabled: !!js process.platform !== 'win32'
+
+    - id: fs-local
+      name: '@deepseek-ai/dsh-fs-local'
+      config:
+        cwd: !!js process.env.DSH_CWD ?? process.cwd()
+
+    - id: agent-spine
+      name: '@deepseek-ai/dsh-agent-spine-demo'
+      config:
+        agents:
+          - id: main
+            provider: deepseek-official
+            model: !!js process.env.DSH_MODEL ?? 'deepseek-v4-flash'
+            cwd: !!js process.env.DSH_CWD ?? process.cwd()
+        includeHarnessIdentity: false
+        includeRuntimeContext: false
+        persona: !!js process.env.DSH_SYSTEM_PROMPT ?? 'You are a helpful software engineer assistant.'
+        workspaceContext: false
+        skills:
+          enabled: false
+        toolBash: false
+        toolJobs: false
+
+    - id: str-replace-editor
+      name: '@deepseek-ai/dsh-tool-str-replace-editor'
+      config:
+        maxOutputChars: 16000
+
+    - id: sessions
+      name: '@deepseek-ai/dsh-session-persistence-jsonl'
+      config:
+        root: !!js process.env.DSH_SESSION_ROOT ?? './.sessions'
+        compression: none
+
+    # 一次性任务驱动 (headless runner: 读命令行位置参数作为任务, 跑完退出)
+    - id: headless-startup
+      name: '@deepseek-ai/dsh-headless/startup'
+
+    - id: headless-runner
+      name: '@deepseek-ai/dsh-headless'
+      inject: [headlessStartup]
+      config:
+        task: !!js ctx.headlessStartup.task

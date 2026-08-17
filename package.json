@@ -1,30 +1,48 @@
 {
-    "name":  "dshd-green",
-    "version":  "0.1.0",
-    "description":  "dshd Green — the guardian: rescue & diagnostics for DeepSeek Harness (DSH). A lifeboat for your DSH.",
-    "main":  "src/index.js",
-    "bin":  {
-               "dshd-green":  "bin/dshd-green.js"
-           },
-    "files":  [
-                  "bin",
-                  "src"
-              ],
-    "scripts":  {
-                    "start":  "node bin/dshd-green.js"
-                },
-    "keywords":  [
-                     "deepseek",
-                     "dsh",
-                     "harness",
-                     "guardian",
-                     "rescue",
-                     "diagnostics"
-                 ],
-    "author":  "dshd contributors",
-    "license":  "MIT",
-    "type":  "commonjs",
-    "engines":  {
-                   "node":  ">=18"
-               }
+  "name": "dshd-green",
+  "version": "0.3.0",
+  "description": "dshd Green — the guardian: rescue & diagnostics for DeepSeek Harness (DSH). A lifeboat for your DSH. Independent: no DSH install needed to use it.",
+  "main": "src/index.js",
+  "bin": {
+    "dshd-green": "bin/dshd-green.js"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "scripts": {
+    "start": "node bin/dshd-green.js"
+  },
+  "keywords": [
+    "deepseek",
+    "dsh",
+    "harness",
+    "guardian",
+    "rescue",
+    "diagnostics"
+  ],
+  "author": "dshd contributors",
+  "license": "MIT",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-agent-default-model": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-agent-spine-demo": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-fs-local": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-headless": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-llm-deepseek": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-pwsh-local": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-sandbox-local": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-sandbox-policy": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-shell-env": "^0.0.1-rc.3",
+    "@deepseek-ai/dsh-subprocess-local": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-terminal": "^0.0.1-rc.3",
+    "@deepseek-ai/dsh-terminal-bash": "^0.0.1-rc.3",
+    "@deepseek-ai/dsh-tool-bash-persistent": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-tool-pwsh": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-tool-str-replace-editor": "^0.0.1-rc.1"
+  }
 }
