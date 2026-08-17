@@ -129,6 +129,58 @@ function checkFile(p) {
   } catch (e) { return { exists: false } }
 }
 
+/** 自动识别 DSH 正在使用的 API key (只读): 默认供应商 apiKeyEnv → credentials → 环境变量 */
+function findKey() {
+  const home = dshHome()
+  let settingsText = ''
+  let credsText = ''
+  try { settingsText = fs.readFileSync(path.join(home, 'settings.yaml'), 'utf8') } catch (e) {}
+  try { credsText = fs.readFileSync(path.join(home, '.credentials.yaml'), 'utf8') } catch (e) {}
+  const creds = {}
+  for (const m of credsText.matchAll(/^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+?)\s*$/gm)) {
+    creds[m[1]] = String(m[2]).replace(/^["']|["']$/g, '')
+  }
+  const dm = settingsText.match(/agent-default-model:\s*\n\s*provider:\s*(\S+)/)
+  if (dm) {
+    const provId = dm[1]
+    const provM = settingsText.match(new RegExp('\\n\\s{2,}' + provId + ':\\s*\\n([\\s\\S]*?)(?=\\n\\s{2}\\S+:\\s|\\n\\S)', 'm'))
+    const envM = (provM ? provM[1] : '').match(/apiKeyEnv:\s*(\S+)/)
+    const env = envM && envM[1]
+    if (env && creds[env]) return { key: creds[env], envName: env, source: '默认供应商 ' + provId + ' (.credentials.yaml)' }
+    if (env && process.env[env]) return { key: process.env[env], envName: env, source: '默认供应商 ' + provId + ' (环境变量)' }
+  }
+  for (const env of ['DEEPSEEK_API_KEY', 'DSH_API_KEY']) {
+    if (creds[env]) return { key: creds[env], envName: env, source: '.credentials.yaml' }
+    if (process.env[env]) return { key: process.env[env], envName: env, source: '环境变量' }
+  }
+  const first = Object.entries(creds)[0]
+  if (first) return { key: first[1], envName: first[0], source: '.credentials.yaml 第一条' }
+  for (const [k, v] of Object.entries(process.env)) {
+    if (/^[A-Z0-9_]*API_KEY$/.test(k) && v) return { key: v, envName: k, source: '环境变量' }
+  }
+  return null
+}
+
+function maskKey(k) {
+  if (!k) return ''
+  return k.length <= 8 ? '****' : k.slice(0, 4) + '…' + k.slice(-4)
+}
+
+function cmdKey(opts) {
+  console.log(C.dim + 'dshd Green ' + VERSION + ' — key' + C.reset)
+  const found = findKey()
+  if (!found) {
+    console.log('  ' + C.yellow + '未找到 DSH 的 API key' + C.reset)
+    console.log('  (检查 ' + path.join(dshHome(), 'settings.yaml') + ' 与 .credentials.yaml)')
+    return 1
+  }
+  console.log('  ✅ 已识别: ' + C.green + maskKey(found.key) + C.reset)
+  console.log('  来源     : ' + found.source)
+  console.log('  环境变量 : ' + found.envName)
+  console.log(C.dim + '  提示: key 只在本地识别, 不落盘、不外发。' + C.reset)
+  return 0
+}
+
 async function cmdDoctor(opts) {
   console.log(C.dim + 'dshd Green ' + VERSION + ' — doctor' + C.reset)
   const home = dshHome()
@@ -169,6 +221,11 @@ async function cmdDoctor(opts) {
   } else {
     console.log('  [' + FAIL + '] .credentials.yaml 缺失 — 没有 API key, 模型不可用')
   }
+
+  // 3.5 API key 自动识别
+  const found = findKey()
+  if (found) console.log('  [' + OK + '] API key 已识别: ' + maskKey(found.key) + ' (' + found.source + ')')
+  else console.log('  [' + WARN + '] 未识别到 API key (可运行 dshd-green key 查看)')
 
   // 4. dsh 进程
   try {
@@ -236,6 +293,7 @@ function usage() {
     '用法 / usage:\n' +
     '  dshd-green status            主 DSH 心跳 + 会话概览\n' +
     '  dshd-green doctor            配置/端口/进程/日志 健康检查\n' +
+    '  dshd-green key               自动识别 DSH 正在使用的 API key\n' +
     '  dshd-green log [--tail 30]   查看日志尾部 (可 --file <path>)\n' +
     '  dshd-green prompt            打印救援实例默认系统提示词 (Phase 2 启用)\n' +
     '\n' +
@@ -262,6 +320,7 @@ async function run(argv) {
       case 'version': console.log('dshd-green ' + VERSION); return 0
       case 'status': return await cmdStatus(opts)
       case 'doctor': return await cmdDoctor(opts)
+      case 'key': return cmdKey(opts)
       case 'log': return cmdLog(opts)
       case 'prompt': return cmdPrompt()
       case 'help':
